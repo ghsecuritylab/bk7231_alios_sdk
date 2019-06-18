@@ -27,8 +27,12 @@ static const flash_config_t flash_config[] =
     {0x0B4016, 2, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0E, 0x01 | (1 << 8), 9, 1, 0xA0, 0x01}, //xtx_25f32b
     {0xC84015, 2, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0D, 0x01 | (1 << 8), 9, 1, 0xA0, 0x01}, //gd_25q16c
     {0x204016, 2, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0E, 0x01 | (1 << 8), 9, 1, 0xA0, 0x01}, //xmc_25qh32b
-    {0xC22315, 1, 2,  0, 2, 0x0F, 0x0F, 0x00, 0x0A, 0x0E, 6, 1, 0xA5, 0x01}, //mx_25v16b
+    {0xC22315, 1, 2,  0, 2, 0x0F, 0x0F, 0x00, 0x0A, 0x00E, 6, 1, 0xA5, 0x01}, //mx_25v16b, TB=0
     {0x000000, 2, 2,  0, 2, 0x1F, 0x00, 0x00, 0x00, 0x00, 0, 0, 0x00, 0x01}, //default
+};
+static const flash_config_t flash_config_mx_16b_for_TB1 =
+{
+    0xC22315, 1, 2,  0, 2, 0x0F, 0x0F, 0x00, 0x05, 0x005, 6, 1, 0xA5, 0x01
 };
 #else
 static const flash_config_t flash_config[] =
@@ -42,9 +46,14 @@ static const flash_config_t flash_config[] =
     {0xC84016, 2, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0E, 0x101, 9, 1, 0xA0, 0x01}, //gd_25q32c
     {0xEF4016, 2, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x00, 0x101, 9, 1, 0xA0, 0x01}, //w_25q32(bfj)
     {0x204016, 2, 2, 14, 2, 0x1F, 0x1F, 0x00, 0x0E, 0x101, 9, 1, 0xA0, 0x01}, //xmc_25qh32b
-    {0xC22315, 1, 2,  0, 2, 0x0F, 0x0F, 0x00, 0x05, 0x005, 6, 1, 0xA5, 0x01}, //mx_25v16b
+    {0xC22315, 1, 2,  0, 2, 0x0F, 0x0F, 0x00, 0x0A, 0x00E, 6, 1, 0xA5, 0x01}, //mx_25v16b, TB=0
     {0x000000, 2, 2,  0, 2, 0x1F, 0x00, 0x00, 0x00, 0x000, 0, 0, 0x00, 0x01}, //default
 };
+static const flash_config_t flash_config_mx_16b_for_TB1 =
+{
+    0xC22315, 1, 2,  0, 2, 0x0F, 0x0F, 0x00, 0x05, 0x005, 6, 1, 0xA5, 0x01
+};
+
 #endif
 
 static const flash_config_t *flash_current_config = NULL;
@@ -515,6 +524,60 @@ void flash_protection_op(UINT8 mode, PROTECT_TYPE type)
 	set_flash_protect(type);
 }
 
+#define FALSH_ADD_FOR_HW        0x1F0000
+static void flash_update_config_for_wh16m(void)
+{
+    uint8_t tmp_buf1[64] = {0};
+    uint8_t tmp_buf2[64] = {0};
+    uint8_t *bak_buffer = NULL;
+
+    bak_buffer = os_malloc(4096);
+    if (NULL != bak_buffer)
+    {
+        flash_read(bak_buffer, 4096, FALSH_ADD_FOR_HW);
+        os_memcpy(tmp_buf1, bak_buffer, sizeof(tmp_buf1));
+    }
+    else
+    {
+        flash_read(tmp_buf1, 64, FALSH_ADD_FOR_HW);
+    }
+
+    flash_erase_sector(FALSH_ADD_FOR_HW);
+    flash_read(tmp_buf2, 64, FALSH_ADD_FOR_HW);
+
+    if(os_memcmp(tmp_buf1, tmp_buf2, 64))
+    {
+        goto restore_bak_buffer;
+    }
+
+    os_memset(tmp_buf2, 0, 64);
+    flash_write(tmp_buf2, 64, FALSH_ADD_FOR_HW);
+    flash_read(tmp_buf2, 64, FALSH_ADD_FOR_HW);
+
+    if(os_memcmp(tmp_buf1, tmp_buf2, 64))
+    {
+        goto restore_bak_buffer;
+    }
+
+    flash_current_config = &flash_config_mx_16b_for_TB1;
+
+    set_flash_protect(FLASH_UNPROTECT_LAST_BLOCK);
+
+    if (NULL != bak_buffer)
+    {
+        os_free(bak_buffer);
+    }
+
+    return;
+
+restore_bak_buffer:
+    if (NULL != bak_buffer)
+    {
+        flash_write(bak_buffer, 4096, FALSH_ADD_FOR_HW);
+        os_free(bak_buffer);
+    }
+}
+
 void flash_init(void)
 {
     UINT32 id, param;
@@ -525,7 +588,12 @@ void flash_init(void)
     flash_get_current_flash_config();
 	
 	set_flash_protect(FLASH_UNPROTECT_LAST_BLOCK);
-	
+
+	if(id == 0xC22315)
+	{
+    	flash_update_config_for_wh16m();
+	}
+
     flash_set_line_mode(flash_current_config->line_mode);
       
     flash_set_clk(5);  // 60M

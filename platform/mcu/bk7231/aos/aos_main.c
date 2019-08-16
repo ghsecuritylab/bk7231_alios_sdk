@@ -87,7 +87,7 @@ static void reg_write_read_test(char *pcWriteBuffer, int xWriteBufferLen, int ar
 
 static const struct cli_command cli_cmd_rftest[] = {
 	{"txevm",       "txevm [-m] [-c] [-l] [-r] [-w]", tx_evm_cmd_test},
-	{"rxsens",      "rxsens [-m] [-d] [-c] [-l]",    rx_sens_cmd_test},
+	{"rxsens",      "rxsens [-m] [-d] [-c] [-l]",     rx_sens_cmd_test},
     {"bkreg",       "bkreg -w/r addr [value]",        reg_write_read_test},
 };
 #endif

@@ -469,6 +469,46 @@ static int32_t cli_get_input(char *inbuf, uint32_t *bp)
     }
 
     while (cli_getchar(&c) == 1) {
+        
+        #if 1//CFG_SUPPORT_BKREG
+        if(((char)0x01 == c) && (*bp == 0)) {
+            inbuf[0] = c;
+            (*bp) = 1;
+            continue;
+        } else if(((char)0xe0 == c) && (*bp == 1)) {
+            inbuf[1] = c;
+            (*bp) = 2;
+            continue;
+        } else if(((char)0xfc == c) && (*bp == 2)) {
+            inbuf[2] = c;
+            (*bp) = 3;
+            continue;
+        } else {
+            if(((char)0x01 == inbuf[0])
+                && ((char)0xe0 == inbuf[1])
+                && ((char)0xfc == inbuf[2])
+                && (*bp == 3))
+            {
+                int left = (int)c, len = 4 + (int)c;
+                inbuf[*bp] = c;
+                (*bp)++;
+                
+                while(left--) {
+                    cli_getchar(&c);
+                    inbuf[*bp] = c;
+                    (*bp)++;
+                }
+
+                extern int bkreg_run_command(const char *content, int cnt);
+                bkreg_run_command(inbuf, len);
+                os_memset(inbuf, 0, len);
+                *bp = 0;
+                return 0;
+            }
+        }
+        #endif  // CFG_SUPPORT_BKREG
+
+        
         if (c == RET_CHAR || c == END_CHAR) { /* end of input line */
             inbuf[*bp] = '\0';
             *bp = 0;

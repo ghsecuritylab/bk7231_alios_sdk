@@ -79,15 +79,15 @@ void krhino_mm_alloc_hook(void *mem, size_t size)
 
 void krhino_idle_hook(void)
 {
-    }
+}
 #endif
 void krhino_update_sys_tick(sys_time_t lost)
-	{
+{
     CPSR_ALLOC();
-	    
-	    RHINO_CPU_INTRPT_DISABLE();   
+
+    RHINO_CPU_INTRPT_DISABLE();
     g_tick_count += lost;
-	    RHINO_CPU_INTRPT_ENABLE();
+    RHINO_CPU_INTRPT_ENABLE();
 }
 
 extern void         *heap_start;

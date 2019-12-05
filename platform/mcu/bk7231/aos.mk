@@ -32,6 +32,7 @@ $(NAME)_CFLAGS += -Wno-unused-value -Wno-strict-aliasing
 GLOBAL_INCLUDES +=  beken/alios/entry \
                     beken/alios/lwip-2.0.2/port \
                     beken/alios/os/include \
+					beken/alios \
                     beken/common \
                     beken/app \
                     beken/app/config \
@@ -72,11 +73,14 @@ $(NAME)_SOURCES += hal/gpio.c        \
                    hal/wifi_port.c   \
                    hal/beken_rhino.c \
                    hal/pwm.c \
+				   hal/spi.c \
                    hal_init/hal_init.c
 
 $(NAME)_SOURCES += hal/pwrmgmt_hal/board_cpu_pwr.c \
                    hal/pwrmgmt_hal/board_cpu_pwr_systick.c \
                    hal/pwrmgmt_hal/board_cpu_pwr_timer.c
+
+$(NAME)_SOURCES += beken/alios/mac_config.c
 
 #Beken ip
 $(NAME)_PREBUILT_LIBRARY += beken/ip/ip.a
